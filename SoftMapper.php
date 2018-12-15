@@ -21,6 +21,8 @@
          * @var string
          */
         private $builded_query = 'SELECT * FROM ';
+
+
         /*specify selected columns selected by select fuction */
         /**
          * @var string
@@ -41,6 +43,13 @@
          * @var
          */
         public $columns;
+
+
+        /**
+         * @var bool
+         */
+        private $update_switch = false;
+
 
         /**
          * DataBaseHandler constructor.
@@ -92,7 +101,7 @@
                     $this->builded_query .= 'SELECT' . "\t" . $aggregate_function . '(' . $aggregate_parameter . ')' . "\t FROM \t" . $this->table_name;
 
             }
-            echo $this->builded_query;
+            $this->builded_query;
 
             return $this;
         }
@@ -101,11 +110,32 @@
          * @return array
          * TODO:THIS METHOD FALLOWED WITH MOST METHODS INCLUDED HERE TO EXECUTE GENERATED QUERY
          */
-        public function get()
+        public function getAll()
         {
             $stmt = $this->pdo->prepare($this->builded_query);
             $stmt->execute($this->query_columns_place_holder_array);
             $result = $stmt->fetchAll(PDO::FETCH_OBJ);
+            return $result;
+        }
+
+        /**
+         * @return mixed
+         */
+        public function get()
+        {
+            $stmt = $this->pdo->prepare($this->builded_query);
+            $stmt->execute($this->query_columns_place_holder_array);
+            $result = $stmt->fetch(PDO::FETCH_OBJ);
+            return $result;
+        }
+
+        /**
+         * @return bool
+         */
+        public function execute()
+        {
+            $stmt = $this->pdo->prepare($this->builded_query);
+            $result = $stmt->execute($this->query_columns_place_holder_array);
             return $result;
         }
 
@@ -117,8 +147,11 @@
          */
         public function where($conditions = array())
         {
+
             $this->query_columns_place_holder_array = array();
+
             $where_query = "\t" . 'where' . "\t";
+
             for ($i = 0; $i < sizeof($conditions); $i++) {
                 $values = $conditions[$i];
                 $index = $values[0];
@@ -129,6 +162,18 @@
                     $where_query .= "\t" . $values[0] . $values[1] . ' :' . $values[0];
             }
             $this->builded_query .= $where_query;
+
+            $keys = array_keys($this->columns);
+            $values = array_values($this->columns);
+
+
+            if ($this->update_switch) {
+//                add update data to be added to prepared statment
+                for ($i = 0; $i < sizeof($this->columns); $i++)
+                    $this->query_columns_place_holder_array['UP_' . $keys[$i]] = $values[$i];
+                print_r($this->query_columns_place_holder_array);
+            }
+
             return $this;
         }
 
@@ -181,17 +226,17 @@
         {
 
             $this->query_columns_place_holder_array = array();
-            $where_query = "\t" . 'HAVING' . "\t";
+            $having_query = "\t" . 'HAVING' . "\t";
             for ($i = 0; $i < sizeof($conditions); $i++) {
                 $values = $conditions[$i];
                 $index = $values[0];
                 $this->query_columns_place_holder_array[$index] = $values[2];
                 if (isset($values[3]))
-                    $where_query .= "\t" . $values[0] . $values[1] . ' :' . $values[0] . "\t" . $values[3];
+                    $having_query .= "\t" . $values[0] . $values[1] . ' :' . $values[0] . "\t" . $values[3];
                 else
-                    $where_query .= "\t" . $values[0] . $values[1] . ' :' . $values[0];
+                    $having_query .= "\t" . $values[0] . $values[1] . ' :' . $values[0];
             }
-            $this->builded_query .= $where_query;
+            $this->builded_query .= $having_query;
 
             return $this;
         }
@@ -205,23 +250,29 @@
          */
         public function insert()
         {
-            $keys = array_keys($this->columns);
-            $keys_for_prepare = array();
-            for ($i = 0; $i < sizeof($keys); $i++) {
-                array_push($keys_for_prepare, ':' . $keys[$i]);
+            $columns = array_keys($this->columns);
+            $values_indicator = array();
+            for ($i = 0; $i < sizeof($columns); $i++) {
+                array_push($values_indicator, ':' . $columns[$i]);
             }
-            echo $key_strt = implode(',', $keys_for_prepare);
-            echo $keys_col = implode(',', $keys);
-            $query = 'INSERT INTO ' . $this->table_name . "\t" . '(' . $keys_col . ') ' . "values (" . $key_strt . ')';
-            echo $query;
+            $values_pointers = implode(',', $values_indicator);
+            $columns_name = implode(',', $columns);
+            $query = 'INSERT INTO ' . $this->table_name . "\t" . '(' . $columns_name . ') ' . "values (" . $values_pointers . ')';
             $stmt_insert = $this->pdo->prepare($query);
             $insert_a_row = $stmt_insert->execute($this->columns);
-            if ($insert_a_row)
-                echo 'phone inserted successfully';
-            else
-                echo 'error occurs';
-            echo $query;
+            return $insert_a_row;
         }
+
+        /**
+         * @param $key
+         * @return mixed
+         */
+        public function find($key)
+        {
+            return $result = $this->all()->where([['id', '=', $key]])->get();
+
+        }
+
 
         /**
          *TODO:delete data
@@ -229,8 +280,10 @@
 
         public function delete()
         {
-
+            $this->builded_query = "DELETE  FROM\t" . $this->table_name;
+            return $this;
         }
+
 
         /**
          *TODO:update data
@@ -238,8 +291,16 @@
 
         public function update()
         {
-
+            $keys = array_keys($this->columns);
+            $values = array_values($this->columns);
+            $keys_for_prepare = array();
+            for ($i = 0; $i < sizeof($keys); $i++) {
+                array_push($keys_for_prepare, $keys[$i] . "=:" . 'UP_' . $keys[$i] . "\t");
+            }
+            $query = 'UPDATE  ' . $this->table_name . "\t" . 'SET ' . implode(',', $keys_for_prepare);
+            $this->builded_query = $query;
+            $this->update_switch = true;
+            return $this;
         }
-
 
     }

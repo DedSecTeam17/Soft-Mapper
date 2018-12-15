@@ -7,6 +7,6 @@
      */
 
     define('host','localhost');
-    define('dbname','phonebook');
+    define('dbname','softmapper');
     define('user','root');
     define('password','');
