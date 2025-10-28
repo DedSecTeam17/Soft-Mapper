@@ -28,6 +28,7 @@ A lightweight, powerful, and easy-to-use PHP ORM (Object-Relational Mapping) lib
 
 ## Features
 
+### Core Features
 - ✅ **Simple and Intuitive API**: Easy-to-understand method chaining interface
 - ✅ **Full CRUD Support**: Create, Read, Update, and Delete operations
 - ✅ **Query Builder**: Build complex SQL queries with simple PHP methods
@@ -40,6 +41,22 @@ A lightweight, powerful, and easy-to-use PHP ORM (Object-Relational Mapping) lib
 - ✅ **Method Chaining**: Chain multiple methods for complex queries
 - ✅ **PDO-Based**: Uses PHP Data Objects for database abstraction
 - ✅ **Lightweight**: Minimal dependencies, single-file implementation
+
+### Advanced Features ⭐ NEW
+- ✨ **Automatic Timestamps**: Auto-manage created_at and updated_at columns
+- ✨ **Soft Deletes**: Mark records as deleted without removing from database
+- ✨ **Pagination with OFFSET**: Full pagination support with limit and offset
+- ✨ **Custom Primary Keys**: Support for non-'id' primary key columns
+- ✨ **Batch Operations**: Insert multiple records efficiently with insertMany()
+- ✨ **Query Scopes**: Define reusable query constraints
+- ✨ **JOIN Support**: INNER JOIN, LEFT JOIN, RIGHT JOIN operations
+- ✨ **Advanced WHERE Clauses**: whereIn, whereNotIn, whereBetween, whereNull
+- ✨ **Helper Methods**: first(), count(), exists(), pluck()
+- ✨ **Transaction Support**: Complete transaction management
+- ✨ **Raw Queries**: Execute custom SQL when needed
+- ✨ **Chunking**: Memory-efficient processing of large datasets
+- ✨ **Update or Create**: Intelligent upsert operations
+- ✨ **Distinct Results**: Get unique records only
 
 ## Requirements
 
@@ -412,6 +429,351 @@ $results = $post->select(['author_id'], 'COUNT', 'id')
     ->getAll();
 ```
 
+## Advanced Features
+
+### Automatic Timestamps
+
+Enable automatic timestamp management for `created_at` and `updated_at` columns:
+
+```php
+class Post extends SoftMapper
+{
+    public $table_name = "posts";
+    public $columns = [];
+    
+    // Enable automatic timestamps (default: true)
+    protected $timestamps = true;
+
+    public function __construct()
+    {
+        parent::__construct();
+    }
+}
+
+$post = new Post();
+$post->columns['title'] = 'My Post';
+$post->insert();
+// created_at and updated_at are automatically set
+
+// Update also automatically updates updated_at
+$post->columns['title'] = 'Updated Title';
+$post->update()->where([['id', '=', 1]])->execute();
+// updated_at is automatically updated
+```
+
+### Soft Deletes
+
+Soft delete marks records as deleted without removing them from the database:
+
+```php
+class Post extends SoftMapper
+{
+    public $table_name = "posts";
+    public $columns = [];
+    
+    // Enable soft deletes
+    protected $soft_deletes = true;
+
+    public function __construct()
+    {
+        parent::__construct();
+    }
+}
+
+// Soft delete (sets deleted_at timestamp)
+$post = new Post();
+$post->delete()->where([['id', '=', 1]])->execute();
+
+// Get only soft-deleted records
+$trashed = $post->onlyTrashed()->getAll();
+
+// Include soft-deleted in results
+$all = $post->withTrashed()->all()->getAll();
+
+// Restore a soft-deleted record
+$post->restore()->where([['id', '=', 1]])->execute();
+
+// Force delete (permanent)
+$post->delete(true)->where([['id', '=', 1]])->execute();
+```
+
+### Custom Primary Keys
+
+Override the default 'id' primary key:
+
+```php
+class Post extends SoftMapper
+{
+    public $table_name = "posts";
+    public $columns = [];
+    
+    // Custom primary key
+    protected $primary_key = 'post_id';
+
+    public function __construct()
+    {
+        parent::__construct();
+    }
+}
+
+$post = new Post();
+$result = $post->find(123); // Uses 'post_id' instead of 'id'
+```
+
+### Pagination with OFFSET
+
+Full pagination support:
+
+```php
+$post = new Post();
+$page = 2;
+$per_page = 10;
+$offset = ($page - 1) * $per_page;
+
+$results = $post->all()
+    ->orderBy('created_at', 'DESC')
+    ->limit($per_page)
+    ->offset($offset)
+    ->getAll();
+```
+
+### Batch Insert
+
+Insert multiple records efficiently:
+
+```php
+$post = new Post();
+$records = [
+    ['title' => 'Post 1', 'body' => 'Content 1', 'author_id' => 1],
+    ['title' => 'Post 2', 'body' => 'Content 2', 'author_id' => 2],
+    ['title' => 'Post 3', 'body' => 'Content 3', 'author_id' => 1],
+];
+
+$result = $post->insertMany($records);
+```
+
+### Advanced WHERE Clauses
+
+#### WHERE IN
+
+```php
+$post = new Post();
+$results = $post->all()
+    ->whereIn('id', [1, 2, 3, 5, 8])
+    ->getAll();
+```
+
+#### WHERE NOT IN
+
+```php
+$post = new Post();
+$results = $post->all()
+    ->whereNotIn('status', ['draft', 'archived'])
+    ->getAll();
+```
+
+#### WHERE BETWEEN
+
+```php
+$post = new Post();
+$results = $post->all()
+    ->whereBetween('views', 100, 1000)
+    ->getAll();
+```
+
+#### WHERE NULL / WHERE NOT NULL
+
+```php
+$post = new Post();
+$with_featured = $post->all()
+    ->whereNotNull('featured_image')
+    ->getAll();
+
+$without_category = $post->all()
+    ->whereNull('category_id')
+    ->getAll();
+```
+
+### Query Scopes
+
+Define reusable query constraints:
+
+```php
+class Post extends SoftMapper
+{
+    public $table_name = "posts";
+    public $columns = [];
+
+    public function __construct()
+    {
+        parent::__construct();
+        
+        // Define a 'published' scope
+        $this->scope('published', function($query) {
+            $query->where([['status', '=', 'published']]);
+        });
+        
+        // Define a 'popular' scope with parameters
+        $this->scope('popular', function($query, $min_views = 1000) {
+            $query->where([['views', '>', $min_views]]);
+        });
+    }
+}
+
+// Use scopes
+$post = new Post();
+$published = $post->all()->applyScope('published')->getAll();
+$popular = $post->all()->applyScope('popular', 500)->getAll();
+```
+
+### JOIN Operations
+
+Perform table joins:
+
+```php
+// INNER JOIN
+$post = new Post();
+$results = $post->select(['posts.title', 'users.name'])
+    ->join('users', 'posts.author_id', '=', 'users.id')
+    ->getAll();
+
+// LEFT JOIN
+$post = new Post();
+$results = $post->select(['posts.*', 'categories.name'])
+    ->leftJoin('categories', 'posts.category_id', '=', 'categories.id')
+    ->getAll();
+
+// RIGHT JOIN
+$post = new Post();
+$results = $post->select(['posts.*', 'tags.name'])
+    ->rightJoin('tags', 'posts.tag_id', '=', 'tags.id')
+    ->getAll();
+```
+
+### Helper Methods
+
+#### first()
+
+Get the first record:
+
+```php
+$post = new Post();
+$latest = $post->all()
+    ->orderBy('created_at', 'DESC')
+    ->first();
+```
+
+#### count()
+
+Count records:
+
+```php
+$post = new Post();
+$total = $post->all()->count();
+$published_count = $post->all()->where([['status', '=', 'published']])->count();
+```
+
+#### exists()
+
+Check if records exist:
+
+```php
+$post = new Post();
+$has_posts = $post->all()->exists();
+$has_published = $post->all()->where([['status', '=', 'published']])->exists();
+```
+
+#### pluck()
+
+Get a single column's values:
+
+```php
+$post = new Post();
+$titles = $post->all()->pluck('title');
+// Returns: ['Title 1', 'Title 2', 'Title 3']
+```
+
+### Transaction Support
+
+Manage database transactions:
+
+```php
+$post = new Post();
+
+try {
+    $post->beginTransaction();
+    
+    $post->columns['title'] = 'Post 1';
+    $post->insert();
+    
+    $post->columns['title'] = 'Post 2';
+    $post->insert();
+    
+    $post->commit();
+    echo "Transaction committed";
+} catch (Exception $e) {
+    $post->rollback();
+    echo "Transaction rolled back";
+}
+```
+
+### Raw Queries
+
+Execute custom SQL:
+
+```php
+$post = new Post();
+$results = $post->raw(
+    "SELECT status, COUNT(*) as count FROM posts WHERE created_at > :date GROUP BY status",
+    ['date' => '2024-01-01']
+);
+```
+
+### Chunking
+
+Process large datasets efficiently:
+
+```php
+$post = new Post();
+$post->all()->chunk(100, function($posts) {
+    // Process 100 posts at a time
+    foreach ($posts as $p) {
+        // Process each post
+    }
+});
+```
+
+### Update or Create
+
+Update existing record or create new one:
+
+```php
+$post = new Post();
+$result = $post->updateOrCreate(
+    ['slug' => 'my-unique-post'],
+    ['title' => 'My Unique Post', 'body' => 'Content', 'status' => 'published']
+);
+```
+
+### Distinct Results
+
+Get unique records:
+
+```php
+$post = new Post();
+$unique_authors = $post->select(['author_id'])->distinct()->getAll();
+```
+
+### Get Last Insert ID
+
+```php
+$post = new Post();
+$post->columns['title'] = 'New Post';
+$post->insert();
+$last_id = $post->lastInsertId();
+echo "New post ID: " . $last_id;
+```
+
 ## API Reference
 
 ### Core Methods
@@ -420,18 +782,50 @@ $results = $post->select(['author_id'], 'COUNT', 'id')
 |--------|-----------|---------|-------------|
 | `all()` | None | `$this` | Selects all records from table |
 | `select()` | `array $columns`, `string $aggregate`, `string $parameter` | `$this` | Select specific columns with optional aggregate |
-| `find()` | `mixed $id` | `object\|null` | Find record by primary key (id) |
+| `find()` | `mixed $id` | `object\|null` | Find record by primary key |
 | `insert()` | None | `bool` | Insert new record using $columns array |
 | `update()` | None | `$this` | Update records (use with where()) |
-| `delete()` | None | `$this` | Delete records (use with where()) |
+| `delete()` | `bool $force` | `$this` | Delete records (supports soft delete) |
 | `where()` | `array $conditions` | `$this` | Add WHERE conditions |
 | `orderBy()` | `string $column`, `string $direction` | `$this` | Order results |
 | `groupBy()` | `string $column` | `$this` | Group results |
 | `having()` | `array $conditions` | `$this` | Add HAVING conditions |
 | `limit()` | `int $number` | `$this` | Limit number of results |
+| `offset()` | `int $number` | `$this` | Offset for pagination |
 | `getAll()` | None | `array` | Execute query and fetch all results |
 | `get()` | None | `object\|null` | Execute query and fetch single result |
 | `execute()` | None | `bool` | Execute query (for UPDATE/DELETE) |
+
+### Advanced Methods
+
+| Method | Parameters | Returns | Description |
+|--------|-----------|---------|-------------|
+| `withTrashed()` | None | `$this` | Include soft deleted records |
+| `onlyTrashed()` | None | `$this` | Get only soft deleted records |
+| `restore()` | None | `$this` | Restore soft deleted records |
+| `insertMany()` | `array $records` | `bool` | Insert multiple records at once |
+| `whereIn()` | `string $column`, `array $values` | `$this` | WHERE IN clause |
+| `whereNotIn()` | `string $column`, `array $values` | `$this` | WHERE NOT IN clause |
+| `whereBetween()` | `string $column`, `mixed $start`, `mixed $end` | `$this` | WHERE BETWEEN clause |
+| `whereNull()` | `string $column` | `$this` | WHERE NULL clause |
+| `whereNotNull()` | `string $column` | `$this` | WHERE NOT NULL clause |
+| `first()` | None | `object\|null` | Get the first record |
+| `count()` | None | `int` | Count records |
+| `exists()` | None | `bool` | Check if records exist |
+| `pluck()` | `string $column` | `array` | Get single column values |
+| `scope()` | `string $name`, `callable $callback` | `void` | Define a query scope |
+| `applyScope()` | `string $name`, `...$args` | `$this` | Apply a query scope |
+| `beginTransaction()` | None | `bool` | Start a database transaction |
+| `commit()` | None | `bool` | Commit a database transaction |
+| `rollback()` | None | `bool` | Rollback a database transaction |
+| `raw()` | `string $query`, `array $params` | `mixed` | Execute raw SQL query |
+| `lastInsertId()` | None | `string` | Get last inserted ID |
+| `chunk()` | `int $size`, `callable $callback` | `void` | Process results in chunks |
+| `join()` | `string $table`, `string $first`, `string $op`, `string $second`, `string $type` | `$this` | Join tables |
+| `leftJoin()` | `string $table`, `string $first`, `string $op`, `string $second` | `$this` | LEFT JOIN |
+| `rightJoin()` | `string $table`, `string $first`, `string $op`, `string $second` | `$this` | RIGHT JOIN |
+| `distinct()` | None | `$this` | Get distinct records |
+| `updateOrCreate()` | `array $attributes`, `array $values` | `bool` | Update existing or create new record |
 
 ### Condition Array Format
 
