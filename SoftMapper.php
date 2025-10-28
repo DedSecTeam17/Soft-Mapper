@@ -8,39 +8,42 @@
 
     require_once 'env.php';
 
-    class  SoftMapper
+    class SoftMapper
     {
 
-        /*PDO PHP DATA ----> instance for data base operations*/
         /**
+         * PDO instance for database operations
          * @var PDO
          */
         private $pdo;
-        /*specify the initial query for complex one*/
+
         /**
+         * Initial query for complex queries
          * @var string
          */
-        private $builded_query = 'SELECT * FROM ';
+        private $built_query = 'SELECT * FROM ';
 
-
-        /*specify selected columns selected by select fuction */
         /**
+         * Selected columns specified by select function
          * @var string
          */
         private $selected_columns = '';
-        /*specify value for columns that used by prepared statement*/
+
         /**
-         * @var
+         * Values for columns used by prepared statement
+         * @var array
          */
         private $query_columns_place_holder_array;
-        /*specify model for data */
+
         /**
-         * @var
+         * Table name for the model
+         * @var string
          */
         public $table_name;
-        /*specify entity columns*/
+
         /**
-         * @var
+         * Entity columns
+         * @var array
          */
         public $columns;
 
@@ -52,102 +55,95 @@
 
 
         /**
-         * DataBaseHandler constructor.
-         * @param string $host
-         * @param $dbname
-         * @param $user
-         * @param $password
+         * SoftMapper constructor.
+         * Initializes database connection using environment configuration
          */
         public function __construct()
         {
-            /*data source name for php to know about data base tech and user data */
             $dsn = 'mysql:host=' . host . ';dbname=' . dbname;
-            /*PDO initialization*/
             $this->pdo = new PDO($dsn, user, password);
         }
 
         /**
+         * Get all rows from table
          * @return $this
-         * TODO:get all rows from table
          */
         public function all()
         {
-            $this->builded_query .= $this->table_name;
+            $this->built_query .= $this->table_name;
             return $this;
         }
 
         /**
-         * @param $table
-         * @param array $columns
-         * @param string $aggregate_function
-         * @param string $aggregate_parameter
+         * Select rows from table with optional aggregate functions
+         * @param array $columns Columns to select
+         * @param string $aggregate_function Aggregate function (e.g., COUNT, SUM, AVG)
+         * @param string $aggregate_parameter Parameter for aggregate function
          * @return $this
-         * TODO:select  raws from table with aggregate functions as option parameter
          */
         public function select($columns = array(), $aggregate_function = '', $aggregate_parameter = null)
         {
+            // Reset old query for selection
+            $this->built_query = '';
 
-//            reset old query for selection
-            $this->builded_query = '';
-//            update with select
-            if (isset($columns)) {
+            if (!empty($columns)) {
                 $this->selected_columns .= implode(',', $columns);
-                if (isset($aggregate_function))
-                    $this->builded_query .= 'SELECT' . "\t" . $this->selected_columns . ",\t" . $aggregate_function . '(' . $aggregate_parameter . ')' . "\t FROM \t" . $this->table_name;
+                if (!empty($aggregate_function))
+                    $this->built_query .= 'SELECT' . "\t" . $this->selected_columns . ",\t" . $aggregate_function . '(' . $aggregate_parameter . ')' . "\t FROM \t" . $this->table_name;
                 else
-                    $this->builded_query .= 'SELECT' . "\t" . $this->selected_columns . "\t FROM \t" . $this->table_name;
+                    $this->built_query .= 'SELECT' . "\t" . $this->selected_columns . "\t FROM \t" . $this->table_name;
             } else {
-                if (isset($aggregate_function))
-                    $this->builded_query .= 'SELECT' . "\t" . $aggregate_function . '(' . $aggregate_parameter . ')' . "\t FROM \t" . $this->table_name;
-
+                if (!empty($aggregate_function))
+                    $this->built_query .= 'SELECT' . "\t" . $aggregate_function . '(' . $aggregate_parameter . ')' . "\t FROM \t" . $this->table_name;
             }
-            $this->builded_query;
 
             return $this;
         }
 
         /**
+         * Execute query and fetch all results
+         * This method follows most methods included here to execute generated query
          * @return array
-         * TODO:THIS METHOD FALLOWED WITH MOST METHODS INCLUDED HERE TO EXECUTE GENERATED QUERY
          */
         public function getAll()
         {
-            $stmt = $this->pdo->prepare($this->builded_query);
+            $stmt = $this->pdo->prepare($this->built_query);
             $stmt->execute($this->query_columns_place_holder_array);
             $result = $stmt->fetchAll(PDO::FETCH_OBJ);
             return $result;
         }
 
         /**
+         * Execute query and fetch single result
          * @return mixed
          */
         public function get()
         {
-            $stmt = $this->pdo->prepare($this->builded_query);
+            $stmt = $this->pdo->prepare($this->built_query);
             $stmt->execute($this->query_columns_place_holder_array);
             $result = $stmt->fetch(PDO::FETCH_OBJ);
             return $result;
         }
 
         /**
+         * Execute the built query
          * @return bool
          */
         public function execute()
         {
-            $stmt = $this->pdo->prepare($this->builded_query);
+            $stmt = $this->pdo->prepare($this->built_query);
             $result = $stmt->execute($this->query_columns_place_holder_array);
             return $result;
         }
 
 
         /**
-         * @param array $conditions
+         * Add conditions to the built query
+         * @param array $conditions Array of conditions [[column, operator, value, logical_operator], ...]
          * @return $this
-         * TODO:add many or once condition for your built query
          */
         public function where($conditions = array())
         {
-
             $this->query_columns_place_holder_array = array();
 
             $where_query = "\t" . 'where' . "\t";
@@ -161,70 +157,60 @@
                 else
                     $where_query .= "\t" . $values[0] . $values[1] . ' :' . $values[0];
             }
-            $this->builded_query .= $where_query;
-
-            $keys = array_keys($this->columns);
-            $values = array_values($this->columns);
-
+            $this->built_query .= $where_query;
 
             if ($this->update_switch) {
-//                add update data to be added to prepared statment
+                $keys = array_keys($this->columns);
+                $values = array_values($this->columns);
+                // Add update data to be added to prepared statement
                 for ($i = 0; $i < sizeof($this->columns); $i++)
                     $this->query_columns_place_holder_array['UP_' . $keys[$i]] = $values[$i];
-                print_r($this->query_columns_place_holder_array);
             }
 
             return $this;
         }
 
         /**
-         * @param $column_name
-         * @param $ordering_type
+         * Add ORDER BY clause to query
+         * @param string $column_name Column to order by
+         * @param string $ordering_type Order type (ASC or DESC)
          * @return $this
-         * TODO:add condition to query to be ordered with  [ascending or descending]order
          */
-        public
-        function orderBy($column_name, $ordering_type)
+        public function orderBy($column_name, $ordering_type)
         {
-            $this->builded_query .= "\t" . 'order by' . "\t" . $column_name . "\t" . $ordering_type;
+            $this->built_query .= "\t" . 'order by' . "\t" . $column_name . "\t" . $ordering_type;
             return $this;
         }
 
         /**
-         * @param $limitation_number
+         * Limit number of selected rows
+         * @param int $limitation_number Number of rows to limit
          * @return $this
-         * TODO:limit numbers of selected row
          */
-        public
-        function limit($limitation_number)
+        public function limit($limitation_number)
         {
-            $this->builded_query .= "\t" . 'LIMIT' . "\t" . $limitation_number;
-            return $this;
-        }
-
-
-        /**
-         * @param $grouper
-         * @return $this
-         * TODO:used with aggregated function to group some of raw and process  functions on it
-         */
-        public
-        function groupBy($grouper)
-        {
-            $this->builded_query .= "\t group by \t" . $grouper;
-//            echo  $this->builded_query;
+            $this->built_query .= "\t" . 'LIMIT' . "\t" . $limitation_number;
             return $this;
         }
 
         /**
-         * @param array $conditions
+         * Group results by column (used with aggregate functions)
+         * @param string $grouper Column to group by
          * @return $this
-         * TODO:used as condition for aggregates functions
          */
-        public
-        function having($conditions = array())
+        public function groupBy($grouper)
         {
+            $this->built_query .= "\t group by \t" . $grouper;
+            return $this;
+        }
 
+        /**
+         * Add HAVING clause (used as condition for aggregate functions)
+         * @param array $conditions Array of conditions [[column, operator, value, logical_operator], ...]
+         * @return $this
+         */
+        public function having($conditions = array())
+        {
             $this->query_columns_place_holder_array = array();
             $having_query = "\t" . 'HAVING' . "\t";
             for ($i = 0; $i < sizeof($conditions); $i++) {
@@ -236,17 +222,14 @@
                 else
                     $having_query .= "\t" . $values[0] . $values[1] . ' :' . $values[0];
             }
-            $this->builded_query .= $having_query;
+            $this->built_query .= $having_query;
 
             return $this;
         }
 
-
-//
-
-
         /**
-         *TODO:insert data
+         * Insert data into table
+         * @return bool
          */
         public function insert()
         {
@@ -264,31 +247,29 @@
         }
 
         /**
-         * @param $key
+         * Find a record by its primary key (id)
+         * @param mixed $key Primary key value
          * @return mixed
          */
         public function find($key)
         {
             return $result = $this->all()->where([['id', '=', $key]])->get();
-
         }
 
-
         /**
-         *TODO:delete data
+         * Delete records from table
+         * @return $this
          */
-
         public function delete()
         {
-            $this->builded_query = "DELETE  FROM\t" . $this->table_name;
+            $this->built_query = "DELETE  FROM\t" . $this->table_name;
             return $this;
         }
 
-
         /**
-         *TODO:update data
+         * Update records in table
+         * @return $this
          */
-
         public function update()
         {
             $keys = array_keys($this->columns);
@@ -298,7 +279,7 @@
                 array_push($keys_for_prepare, $keys[$i] . "=:" . 'UP_' . $keys[$i] . "\t");
             }
             $query = 'UPDATE  ' . $this->table_name . "\t" . 'SET ' . implode(',', $keys_for_prepare);
-            $this->builded_query = $query;
+            $this->built_query = $query;
             $this->update_switch = true;
             return $this;
         }
