@@ -3,8 +3,27 @@
 ![PHP Version](https://img.shields.io/badge/PHP-%3E%3D%205.6-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Status](https://img.shields.io/badge/status-active-brightgreen)
+![Version](https://img.shields.io/badge/version-2.0.0-orange)
 
-A lightweight, powerful, and easy-to-use PHP ORM (Object-Relational Mapping) library for MySQL databases. Soft-Mapper provides a clean and intuitive interface for database operations with built-in security features.
+A lightweight, powerful, and easy-to-use PHP ORM (Object-Relational Mapping) library for MySQL databases. Soft-Mapper provides a clean and intuitive interface for database operations with built-in security features and advanced ORM capabilities.
+
+## 🚀 What's New in v2.0
+
+Version 2.0 brings **27 new methods** and **advanced ORM features** that make Soft-Mapper comparable to Laravel's Eloquent:
+
+- ✨ **Automatic Timestamps** - Auto-manage created_at/updated_at
+- ✨ **Soft Deletes** - Mark records as deleted without removing them
+- ✨ **Query Scopes** - Reusable query constraints
+- ✨ **Batch Operations** - Insert multiple records efficiently
+- ✨ **Transactions** - Full transaction support
+- ✨ **Advanced Queries** - whereIn, whereBetween, whereNull, JOINs
+- ✨ **Helper Methods** - count(), exists(), first(), pluck()
+- ✨ **And much more!** - See [CHANGELOG.md](CHANGELOG.md) for complete list
+
+**📚 Documentation:**
+- [Quick Start Guide](QUICK_START.md) - Get started with new features
+- [Changelog](CHANGELOG.md) - Complete list of changes
+- [Advanced Examples](advanced-example.php) - Real-world usage examples
 
 ## Table of Contents
 
@@ -18,6 +37,7 @@ A lightweight, powerful, and easy-to-use PHP ORM (Object-Relational Mapping) lib
   - [Basic CRUD Operations](#basic-crud-operations)
   - [Advanced Queries](#advanced-queries)
   - [Aggregate Functions](#aggregate-functions)
+- [Advanced Features](#advanced-features)
 - [API Reference](#api-reference)
 - [Examples](#examples)
 - [Security](#security)
@@ -68,6 +88,30 @@ A lightweight, powerful, and easy-to-use PHP ORM (Object-Relational Mapping) lib
 
 ## Installation
 
+### Using Composer (Recommended)
+
+Add to your `composer.json`:
+
+```json
+{
+    "require": {
+        "dedsecteam17/soft-mapper": "^2.0"
+    }
+}
+```
+
+Then run:
+
+```bash
+composer install
+```
+
+Or install directly:
+
+```bash
+composer require dedsecteam17/soft-mapper
+```
+
 ### Manual Installation
 
 1. Clone this repository or download the files:
@@ -83,16 +127,16 @@ cd Soft-Mapper
 require_once 'path/to/SoftMapper.php';
 ```
 
-### Using Composer (Recommended)
+### Using as a Git Submodule
 
-While this library doesn't have a Composer package yet, you can include it in your project:
+```bash
+git submodule add https://github.com/DedSecTeam17/Soft-Mapper.git libs/soft-mapper
+```
 
-1. Create a `libs` or `vendor` directory in your project
-2. Copy `SoftMapper.php` to that directory
-3. Require it in your code
+Then include in your code:
 
 ```php
-require_once __DIR__ . '/libs/SoftMapper.php';
+require_once __DIR__ . '/libs/soft-mapper/SoftMapper.php';
 ```
 
 ## Quick Start
