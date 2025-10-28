@@ -88,31 +88,15 @@ Version 2.0 brings **27 new methods** and **advanced ORM features** that make So
 
 ## Installation
 
-### Using Composer (Recommended)
+### Using Composer (Coming Soon)
 
-Add to your `composer.json`:
-
-```json
-{
-    "require": {
-        "dedsecteam17/soft-mapper": "^2.0"
-    }
-}
-```
-
-Then run:
-
-```bash
-composer install
-```
-
-Or install directly:
+Once published to Packagist, you'll be able to install via:
 
 ```bash
 composer require dedsecteam17/soft-mapper
 ```
 
-### Manual Installation
+### Manual Installation (Recommended for now)
 
 1. Clone this repository or download the files:
 
