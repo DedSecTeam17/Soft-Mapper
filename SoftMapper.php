@@ -86,14 +86,14 @@
             // Reset old query for selection
             $this->built_query = '';
 
-            if (isset($columns)) {
+            if (!empty($columns)) {
                 $this->selected_columns .= implode(',', $columns);
-                if (isset($aggregate_function))
+                if (!empty($aggregate_function))
                     $this->built_query .= 'SELECT' . "\t" . $this->selected_columns . ",\t" . $aggregate_function . '(' . $aggregate_parameter . ')' . "\t FROM \t" . $this->table_name;
                 else
                     $this->built_query .= 'SELECT' . "\t" . $this->selected_columns . "\t FROM \t" . $this->table_name;
             } else {
-                if (isset($aggregate_function))
+                if (!empty($aggregate_function))
                     $this->built_query .= 'SELECT' . "\t" . $aggregate_function . '(' . $aggregate_parameter . ')' . "\t FROM \t" . $this->table_name;
             }
 
