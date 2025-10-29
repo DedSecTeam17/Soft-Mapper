@@ -13,6 +13,8 @@ Version 2.0 brings **27 new methods** and **advanced ORM features** that make So
 
 - ✨ **Automatic Timestamps** - Auto-manage created_at/updated_at
 - ✨ **Soft Deletes** - Mark records as deleted without removing them
+- ✨ **ORM Relationships** - Define 1:1, 1:N, and N:N relationships (NEW!)
+- ✨ **Eager Loading** - Load relationships efficiently to prevent N+1 queries (NEW!)
 - ✨ **Query Scopes** - Reusable query constraints
 - ✨ **Batch Operations** - Insert multiple records efficiently
 - ✨ **Transactions** - Full transaction support
@@ -22,6 +24,7 @@ Version 2.0 brings **27 new methods** and **advanced ORM features** that make So
 
 **📚 Documentation:**
 - [Quick Start Guide](QUICK_START.md) - Get started with new features
+- [ORM Relationships Guide](RELATIONSHIPS.md) - Complete guide to relationships (NEW!)
 - [Changelog](CHANGELOG.md) - Complete list of changes
 - [Advanced Examples](advanced-example.php) - Real-world usage examples
 
@@ -65,6 +68,10 @@ Version 2.0 brings **27 new methods** and **advanced ORM features** that make So
 ### Advanced Features ⭐ NEW
 - ✨ **Automatic Timestamps**: Auto-manage created_at and updated_at columns
 - ✨ **Soft Deletes**: Mark records as deleted without removing from database
+- ✨ **ORM Relationships**: Define and query 1:1, 1:N, and N:N relationships
+- ✨ **Eager Loading**: Load relationships efficiently with with()
+- ✨ **Relationship Methods**: hasOne(), hasMany(), belongsTo(), belongsToMany()
+- ✨ **Pivot Table Operations**: attach(), detach(), sync() for many-to-many
 - ✨ **Pagination with OFFSET**: Full pagination support with limit and offset
 - ✨ **Custom Primary Keys**: Support for non-'id' primary key columns
 - ✨ **Batch Operations**: Insert multiple records efficiently with insertMany()
@@ -802,6 +809,139 @@ $last_id = $post->lastInsertId();
 echo "New post ID: " . $last_id;
 ```
 
+## ORM Relationships
+
+Soft-Mapper now supports defining and querying relationships between models, making it easy to work with related data.
+
+### Defining Relationships
+
+Define relationships in your model classes:
+
+```php
+class User extends SoftMapper
+{
+    public $table_name = "users";
+    
+    // One-to-Many: User has many posts
+    public function posts()
+    {
+        return $this->hasMany('Post', 'user_id', 'id');
+    }
+    
+    // One-to-One: User has one profile
+    public function profile()
+    {
+        return $this->hasOne('UserProfile', 'user_id', 'id');
+    }
+}
+
+class Post extends SoftMapper
+{
+    public $table_name = "posts";
+    
+    // Belongs To: Post belongs to a user
+    public function user()
+    {
+        return $this->belongsTo('User', 'user_id', 'id');
+    }
+    
+    // One-to-Many: Post has many comments
+    public function comments()
+    {
+        return $this->hasMany('Comment', 'post_id', 'id');
+    }
+    
+    // Many-to-Many: Post belongs to many tags
+    public function tags()
+    {
+        return $this->belongsToMany('Tag', 'post_tag', 'post_id', 'tag_id');
+    }
+}
+```
+
+### Loading Relationships
+
+**Lazy Loading** (load relationships as needed):
+
+```php
+$user = new User();
+$user_record = $user->find(1);
+
+// Load the posts relationship
+$user->loadRelation('posts', $user_record);
+
+// Access related data
+foreach ($user_record->posts as $post) {
+    echo $post->title . "\n";
+}
+```
+
+**Eager Loading** (load relationships efficiently for multiple records):
+
+```php
+$post = new Post();
+
+// Load posts with users and comments in one query
+$posts = $post->with(['user', 'comments'])->all()->getAll();
+
+foreach ($posts as $p) {
+    echo "Post: " . $p->title . "\n";
+    echo "Author: " . $p->user->name . "\n";
+    echo "Comments: " . count($p->comments) . "\n";
+}
+```
+
+### Many-to-Many Operations
+
+Manage many-to-many relationships with pivot table operations:
+
+```php
+$post = new Post();
+
+// Attach a tag to a post
+$post->attach(1, 5, 'tags'); // Attach tag ID 5 to post ID 1
+
+// Detach a tag from a post
+$post->detach(1, 'tags', 5); // Detach tag ID 5 from post ID 1
+
+// Sync tags (replace all existing with new ones)
+$post->sync(1, [1, 2, 3], 'tags'); // Post ID 1 now has tags 1, 2, 3
+```
+
+### Complete Example
+
+```php
+// Create user and posts with relationships
+$user = new User();
+$user->columns = ['name' => 'John Doe', 'email' => 'john@example.com'];
+$user->insert();
+$user_id = $user->lastInsertId();
+
+$post = new Post();
+$post->columns = [
+    'user_id' => $user_id,
+    'title' => 'My First Post',
+    'body' => 'This is my first post!',
+    'status' => 'published'
+];
+$post->insert();
+$post_id = $post->lastInsertId();
+
+// Attach tags to post
+$post->attach($post_id, 1, 'tags'); // Tag: PHP
+$post->attach($post_id, 2, 'tags'); // Tag: MySQL
+
+// Load post with all relationships
+$loaded_post = $post->with(['user', 'comments', 'tags'])->find($post_id);
+
+echo "Post: " . $loaded_post->title . "\n";
+echo "Author: " . $loaded_post->user->name . "\n";
+echo "Tags: " . count($loaded_post->tags) . "\n";
+```
+
+**📚 For complete relationship documentation, see [RELATIONSHIPS.md](RELATIONSHIPS.md)**
+
+
 ## API Reference
 
 ### Core Methods
@@ -854,6 +994,20 @@ echo "New post ID: " . $last_id;
 | `rightJoin()` | `string $table`, `string $first`, `string $op`, `string $second` | `$this` | RIGHT JOIN |
 | `distinct()` | None | `$this` | Get distinct records |
 | `updateOrCreate()` | `array $attributes`, `array $values` | `bool` | Update existing or create new record |
+
+### Relationship Methods
+
+| Method | Parameters | Returns | Description |
+|--------|-----------|---------|-------------|
+| `hasOne()` | `string $class`, `string $foreign_key`, `string $local_key` | `$this` | Define one-to-one relationship |
+| `hasMany()` | `string $class`, `string $foreign_key`, `string $local_key` | `$this` | Define one-to-many relationship |
+| `belongsTo()` | `string $class`, `string $foreign_key`, `string $owner_key` | `$this` | Define inverse relationship |
+| `belongsToMany()` | `string $class`, `string $pivot`, `string $foreign_key`, `string $related_key` | `$this` | Define many-to-many relationship |
+| `loadRelation()` | `string $name`, `object $record` | `object` | Load a relationship for a record |
+| `with()` | `array $relations` | `$this` | Eager load relationships |
+| `attach()` | `mixed $id`, `mixed $related_id`, `string $relation`, `array $pivot_data` | `bool` | Attach in many-to-many |
+| `detach()` | `mixed $id`, `string $relation`, `mixed $related_id` | `bool` | Detach in many-to-many |
+| `sync()` | `mixed $id`, `array $related_ids`, `string $relation` | `bool` | Sync many-to-many relationships |
 
 ### Condition Array Format
 

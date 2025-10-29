@@ -72,6 +72,18 @@
         protected $scopes = [];
 
         /**
+         * Defined relationships
+         * @var array
+         */
+        public $relationships = [];
+
+        /**
+         * Loaded relationships data
+         * @var array
+         */
+        public $loaded_relations = [];
+
+        /**
          * @var bool
          */
         private $update_switch = false;
@@ -155,6 +167,10 @@
             $stmt = $this->pdo->prepare($this->built_query);
             $stmt->execute($this->query_columns_place_holder_array);
             $result = $stmt->fetchAll(PDO::FETCH_OBJ);
+            
+            // Load eager relationships if specified
+            $result = $this->loadEagerRelations($result);
+            
             return $result;
         }
 
@@ -731,6 +747,295 @@
                 $this->columns = array_merge($attributes, $values);
                 return $this->insert();
             }
+        }
+
+        // ==================== Relationship Methods ====================
+
+        /**
+         * Define a one-to-one relationship
+         * @param string $related_class Related model class name
+         * @param string $foreign_key Foreign key on related table (default: {this_table}_id)
+         * @param string $local_key Local key on this table (default: primary key)
+         * @return mixed
+         */
+        public function hasOne($related_class, $foreign_key = null, $local_key = null)
+        {
+            $foreign_key = $foreign_key ?: $this->table_name . '_id';
+            $local_key = $local_key ?: $this->primary_key;
+
+            $this->relationships['hasOne'][] = [
+                'class' => $related_class,
+                'foreign_key' => $foreign_key,
+                'local_key' => $local_key
+            ];
+
+            return $this;
+        }
+
+        /**
+         * Define a one-to-many relationship
+         * @param string $related_class Related model class name
+         * @param string $foreign_key Foreign key on related table (default: {this_table}_id)
+         * @param string $local_key Local key on this table (default: primary key)
+         * @return mixed
+         */
+        public function hasMany($related_class, $foreign_key = null, $local_key = null)
+        {
+            $foreign_key = $foreign_key ?: $this->table_name . '_id';
+            $local_key = $local_key ?: $this->primary_key;
+
+            $this->relationships['hasMany'][] = [
+                'class' => $related_class,
+                'foreign_key' => $foreign_key,
+                'local_key' => $local_key
+            ];
+
+            return $this;
+        }
+
+        /**
+         * Define an inverse one-to-many relationship (belongs to)
+         * @param string $related_class Related model class name
+         * @param string $foreign_key Foreign key on this table (default: {related_table}_id)
+         * @param string $owner_key Primary key on related table (default: id)
+         * @return mixed
+         */
+        public function belongsTo($related_class, $foreign_key = null, $owner_key = null)
+        {
+            $related = new $related_class();
+            $foreign_key = $foreign_key ?: $related->table_name . '_id';
+            $owner_key = $owner_key ?: $related->primary_key;
+
+            $this->relationships['belongsTo'][] = [
+                'class' => $related_class,
+                'foreign_key' => $foreign_key,
+                'owner_key' => $owner_key
+            ];
+
+            return $this;
+        }
+
+        /**
+         * Define a many-to-many relationship
+         * @param string $related_class Related model class name
+         * @param string $pivot_table Pivot/junction table name (default: alphabetically ordered tables)
+         * @param string $foreign_pivot_key Foreign key for this model in pivot table
+         * @param string $related_pivot_key Foreign key for related model in pivot table
+         * @param string $parent_key Parent key on this table (default: primary key)
+         * @param string $related_key Related key on related table (default: primary key)
+         * @return mixed
+         */
+        public function belongsToMany($related_class, $pivot_table = null, $foreign_pivot_key = null, $related_pivot_key = null, $parent_key = null, $related_key = null)
+        {
+            $related = new $related_class();
+            
+            // Auto-generate pivot table name if not provided (alphabetically ordered)
+            if (!$pivot_table) {
+                $tables = [$this->table_name, $related->table_name];
+                sort($tables);
+                $pivot_table = implode('_', $tables);
+            }
+
+            $foreign_pivot_key = $foreign_pivot_key ?: $this->table_name . '_id';
+            $related_pivot_key = $related_pivot_key ?: $related->table_name . '_id';
+            $parent_key = $parent_key ?: $this->primary_key;
+            $related_key = $related_key ?: $related->primary_key;
+
+            $this->relationships['belongsToMany'][] = [
+                'class' => $related_class,
+                'pivot_table' => $pivot_table,
+                'foreign_pivot_key' => $foreign_pivot_key,
+                'related_pivot_key' => $related_pivot_key,
+                'parent_key' => $parent_key,
+                'related_key' => $related_key
+            ];
+
+            return $this;
+        }
+
+        /**
+         * Load a relationship for a single model instance
+         * @param string $relation_name Name of the relationship method
+         * @param mixed $record The record to load relationships for
+         * @return mixed
+         */
+        public function loadRelation($relation_name, $record)
+        {
+            if (!method_exists($this, $relation_name)) {
+                return $record;
+            }
+
+            // Get a fresh instance and call the relationship method to register it
+            $temp_instance = new static();
+            $temp_instance->$relation_name();
+
+            // Find the relationship definition
+            foreach ($temp_instance->relationships as $type => $relations) {
+                foreach ($relations as $relation) {
+                    // Load based on relationship type
+                    if ($type === 'hasOne') {
+                        $related = new $relation['class']();
+                        $result = $related->all()
+                            ->where([[$relation['foreign_key'], '=', $record->{$relation['local_key']}]])
+                            ->first();
+                        $record->$relation_name = $result;
+                    } elseif ($type === 'hasMany') {
+                        $related = new $relation['class']();
+                        $results = $related->all()
+                            ->where([[$relation['foreign_key'], '=', $record->{$relation['local_key']}]])
+                            ->getAll();
+                        $record->$relation_name = $results;
+                    } elseif ($type === 'belongsTo') {
+                        $related = new $relation['class']();
+                        $result = $related->find($record->{$relation['foreign_key']});
+                        $record->$relation_name = $result;
+                    } elseif ($type === 'belongsToMany') {
+                        $related = new $relation['class']();
+                        $pivot_table = $relation['pivot_table'];
+                        $foreign_pivot_key = $relation['foreign_pivot_key'];
+                        $related_pivot_key = $relation['related_pivot_key'];
+                        $parent_key = $relation['parent_key'];
+                        $related_key = $relation['related_key'];
+
+                        // Query through pivot table
+                        $query = "SELECT " . $related->table_name . ".* FROM " . $related->table_name . 
+                                 " INNER JOIN " . $pivot_table . 
+                                 " ON " . $related->table_name . "." . $related_key . " = " . $pivot_table . "." . $related_pivot_key .
+                                 " WHERE " . $pivot_table . "." . $foreign_pivot_key . " = :parent_id";
+                        
+                        $results = $this->raw($query, ['parent_id' => $record->{$parent_key}]);
+                        $record->$relation_name = $results;
+                    }
+                }
+            }
+
+            return $record;
+        }
+
+        /**
+         * Eager load relationships for multiple records
+         * @param array $relations Array of relationship names to load
+         * @return $this
+         */
+        public function with($relations = [])
+        {
+            if (!is_array($relations)) {
+                $relations = [$relations];
+            }
+
+            $this->loaded_relations = $relations;
+            return $this;
+        }
+
+        /**
+         * Override getAll to support eager loading
+         * @return array
+         */
+        private function loadEagerRelations($results)
+        {
+            if (empty($this->loaded_relations) || empty($results)) {
+                return $results;
+            }
+
+            foreach ($results as $record) {
+                foreach ($this->loaded_relations as $relation_name) {
+                    $this->loadRelation($relation_name, $record);
+                }
+            }
+
+            return $results;
+        }
+
+        /**
+         * Attach a related model in a many-to-many relationship
+         * @param mixed $id The ID of the parent record
+         * @param mixed $related_id The ID of the related record to attach
+         * @param string $relation_name Name of the belongsToMany relationship
+         * @param array $pivot_data Additional pivot table data
+         * @return bool
+         */
+        public function attach($id, $related_id, $relation_name, $pivot_data = [])
+        {
+            // Get relationship definition
+            $temp_instance = new static();
+            $temp_instance->$relation_name();
+
+            if (!isset($temp_instance->relationships['belongsToMany'])) {
+                return false;
+            }
+
+            $relation = $temp_instance->relationships['belongsToMany'][0];
+            $pivot_table = $relation['pivot_table'];
+            $foreign_pivot_key = $relation['foreign_pivot_key'];
+            $related_pivot_key = $relation['related_pivot_key'];
+
+            // Insert into pivot table
+            $columns = array_merge([
+                $foreign_pivot_key => $id,
+                $related_pivot_key => $related_id
+            ], $pivot_data);
+
+            $column_names = array_keys($columns);
+            $placeholders = array_map(function($col) { return ':' . $col; }, $column_names);
+
+            $query = "INSERT INTO " . $pivot_table . " (" . implode(',', $column_names) . ") VALUES (" . implode(',', $placeholders) . ")";
+            
+            $stmt = $this->pdo->prepare($query);
+            return $stmt->execute($columns);
+        }
+
+        /**
+         * Detach a related model in a many-to-many relationship
+         * @param mixed $id The ID of the parent record
+         * @param string $relation_name Name of the belongsToMany relationship
+         * @param mixed $related_id The ID of the related record to detach (null to detach all)
+         * @return bool
+         */
+        public function detach($id, $relation_name, $related_id = null)
+        {
+            // Get relationship definition
+            $temp_instance = new static();
+            $temp_instance->$relation_name();
+
+            if (!isset($temp_instance->relationships['belongsToMany'])) {
+                return false;
+            }
+
+            $relation = $temp_instance->relationships['belongsToMany'][0];
+            $pivot_table = $relation['pivot_table'];
+            $foreign_pivot_key = $relation['foreign_pivot_key'];
+            $related_pivot_key = $relation['related_pivot_key'];
+
+            if ($related_id === null) {
+                // Detach all
+                $query = "DELETE FROM " . $pivot_table . " WHERE " . $foreign_pivot_key . " = :id";
+                $params = ['id' => $id];
+            } else {
+                // Detach specific
+                $query = "DELETE FROM " . $pivot_table . " WHERE " . $foreign_pivot_key . " = :id AND " . $related_pivot_key . " = :related_id";
+                $params = ['id' => $id, 'related_id' => $related_id];
+            }
+
+            $stmt = $this->pdo->prepare($query);
+            return $stmt->execute($params);
+        }
+
+        /**
+         * Sync many-to-many relationships (detach all and attach new ones)
+         * @param mixed $id The ID of the parent record
+         * @param array $related_ids Array of related IDs to sync
+         * @param string $relation_name Name of the belongsToMany relationship
+         * @return bool
+         */
+        public function sync($id, $related_ids, $relation_name)
+        {
+            $this->detach($id, null, $relation_name);
+            
+            foreach ($related_ids as $related_id) {
+                $this->attach($id, $related_id, $relation_name);
+            }
+
+            return true;
         }
 
     }
