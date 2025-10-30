@@ -67,7 +67,9 @@ To automatically update Packagist when you push new releases:
 5. Go to GitHub repository Settings > Webhooks
 6. Add webhook with the Packagist URL
 7. Content type: `application/json`
-8. Events: Just the push event
+8. Events: Select "Let me select individual events" and check:
+   - Pushes (for branch updates)
+   - Releases (for new version tags)
 9. Active: checked
 
 Alternatively, use the simpler method:
@@ -89,8 +91,8 @@ composer init --no-interaction
 # Require the package
 composer require dedsecteam17/soft-mapper
 
-# Verify it works
-php -r "require 'vendor/autoload.php'; echo class_exists('SoftMapper') ? 'Success!' : 'Failed!';"
+# Verify it works (run from project root)
+php -r "require __DIR__ . '/vendor/autoload.php'; echo class_exists('SoftMapper') ? 'Success!' : 'Failed!';"
 ```
 
 ### 6. Announce the Release

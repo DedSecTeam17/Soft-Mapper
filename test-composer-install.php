@@ -44,30 +44,27 @@ if (!class_exists('SoftMapper')) {
 }
 echo "OK\n";
 
-// Test 4: Try to instantiate a test class
-echo "[4/4] Testing SoftMapper instantiation... ";
+// Test 4: Verify class properties and structure
+echo "[4/4] Testing SoftMapper class structure... ";
 try {
-    // Create a simple test class that extends SoftMapper
-    class TestModel extends SoftMapper
-    {
-        public $table_name = "test_table";
-        public $columns = [];
-        
-        // Override constructor to avoid database connection for this test
-        public function __construct()
-        {
-            // Don't call parent::__construct() to avoid DB connection requirement
-            $this->table_name = "test_table";
-            $this->columns = [];
-        }
+    // Use reflection to verify the class structure without instantiation
+    $reflection = new ReflectionClass('SoftMapper');
+    
+    // Check that it's a class (not interface or trait)
+    if (!$reflection->isInstantiable()) {
+        echo "FAILED\n";
+        echo "Error: SoftMapper is not instantiable.\n";
+        exit(1);
     }
     
-    $test = new TestModel();
-    
-    if ($test->table_name !== "test_table") {
-        echo "FAILED\n";
-        echo "Error: Table name not set correctly.\n";
-        exit(1);
+    // Check for essential methods
+    $requiredMethods = ['all', 'find', 'insert', 'update', 'delete', 'where', 'getAll', 'get'];
+    foreach ($requiredMethods as $method) {
+        if (!$reflection->hasMethod($method)) {
+            echo "FAILED\n";
+            echo "Error: Required method '$method' not found.\n";
+            exit(1);
+        }
     }
     
     echo "OK\n";
@@ -82,6 +79,6 @@ echo "\n" . str_repeat("=", 50) . "\n";
 echo "✓ All tests passed!\n";
 echo "Soft-Mapper is properly installed via Composer.\n";
 echo "\nYou can now use it in your project:\n";
-echo "  require_once 'vendor/autoload.php';\n";
+echo "  require_once __DIR__ . '/vendor/autoload.php';\n";
 echo "  class MyModel extends SoftMapper { ... }\n";
 exit(0);
