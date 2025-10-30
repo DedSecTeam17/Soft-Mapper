@@ -7,3 +7,10 @@
 *.iml
 out
 gen
+
+# Composer dependencies
+/vendor/
+composer.lock
+
+# Environment files
+env.php

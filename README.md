@@ -95,15 +95,21 @@ Version 2.0 brings **27 new methods** and **advanced ORM features** that make So
 
 ## Installation
 
-### Using Composer (Coming Soon)
+### Using Composer (Recommended)
 
-Once published to Packagist, you'll be able to install via:
+Install via Composer:
 
 ```bash
 composer require dedsecteam17/soft-mapper
 ```
 
-### Manual Installation (Recommended for now)
+Then include the autoloader in your project:
+
+```php
+require_once 'vendor/autoload.php';
+```
+
+### Manual Installation
 
 1. Clone this repository or download the files:
 

@@ -1,6 +1,6 @@
 {
     "name": "dedsecteam17/soft-mapper",
-    "description": "A lightweight, powerful, and easy-to-use PHP ORM library for MySQL databases with advanced features",
+    "description": "A lightweight, powerful, and easy-to-use PHP ORM library for MySQL databases with advanced features including relationships, soft deletes, and automatic timestamps",
     "type": "library",
     "keywords": [
         "orm",
@@ -10,9 +10,12 @@
         "query-builder",
         "soft-deletes",
         "timestamps",
+        "relationships",
+        "eloquent",
         "php"
     ],
     "homepage": "https://github.com/DedSecTeam17/Soft-Mapper",
+    "readme": "README.md",
     "license": "MIT",
     "authors": [
         {
@@ -22,16 +25,23 @@
     ],
     "support": {
         "issues": "https://github.com/DedSecTeam17/Soft-Mapper/issues",
-        "source": "https://github.com/DedSecTeam17/Soft-Mapper"
+        "source": "https://github.com/DedSecTeam17/Soft-Mapper",
+        "docs": "https://github.com/DedSecTeam17/Soft-Mapper/blob/master/README.md"
     },
     "require": {
         "php": ">=5.6",
         "ext-pdo": "*",
         "ext-pdo_mysql": "*"
     },
+    "require-dev": {},
     "autoload": {
         "classmap": [
             "SoftMapper.php"
+        ]
+    },
+    "autoload-dev": {
+        "classmap": [
+            "examples/"
         ]
     },
     "minimum-stability": "stable",
