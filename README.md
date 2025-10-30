@@ -1,9 +1,11 @@
 # Soft-Mapper
 
-![PHP Version](https://img.shields.io/badge/PHP-%3E%3D%205.6-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-![Status](https://img.shields.io/badge/status-active-brightgreen)
-![Version](https://img.shields.io/badge/version-2.0.0-orange)
+[![PHP Version](https://img.shields.io/badge/PHP-%3E%3D%205.6-blue)](https://packagist.org/packages/dedsecteam17/soft-mapper)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Status](https://img.shields.io/badge/status-active-brightgreen)](https://github.com/DedSecTeam17/Soft-Mapper)
+[![Version](https://img.shields.io/badge/version-2.0.0-orange)](https://github.com/DedSecTeam17/Soft-Mapper/releases)
+[![Packagist](https://img.shields.io/packagist/v/dedsecteam17/soft-mapper.svg)](https://packagist.org/packages/dedsecteam17/soft-mapper)
+[![Packagist Downloads](https://img.shields.io/packagist/dt/dedsecteam17/soft-mapper.svg)](https://packagist.org/packages/dedsecteam17/soft-mapper)
 
 A lightweight, powerful, and easy-to-use PHP ORM (Object-Relational Mapping) library for MySQL databases. Soft-Mapper provides a clean and intuitive interface for database operations with built-in security features and advanced ORM capabilities.
 
