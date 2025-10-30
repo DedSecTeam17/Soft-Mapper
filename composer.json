@@ -33,15 +33,9 @@
         "ext-pdo": "*",
         "ext-pdo_mysql": "*"
     },
-    "require-dev": {},
     "autoload": {
         "classmap": [
             "SoftMapper.php"
-        ]
-    },
-    "autoload-dev": {
-        "classmap": [
-            "examples/"
         ]
     },
     "minimum-stability": "stable",
